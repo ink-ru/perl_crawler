@@ -19,7 +19,7 @@ my $map='http://magizoo.ru/sitemap_000.xml';
 
 # Лог файл для записи
 
-open (LOG, ">..\\bot.log") or die ( "Can't open log file!" );
+open (LOG, ">bot.log") or die ( "Can't open log file!" );
 $| = 1;
 
 

@@ -13,6 +13,7 @@ my $threads=4;
 my $last_p:shared=0;
 my @urlst:shared;
 my @urlst_done:shared;
+my $log;
 
 my $strt='http://sufab.ru/';
 
@@ -20,7 +21,8 @@ push @urlst, $strt;
 
 # Лог файл для записи
 
-open (LOG, ">bot.log") or die ( "Can't open log file!" );
+open ($log, "+<:encoding(UTF-8)", "zeena.log") or die ( "Can't open $log file!" );
+#open ($log, "+<zeena.log") or die ( "Can't open $log file!" );
 $| = 1;
 
 my $spyder = LWP::RobotUA->new("SeoCheckBot/main", 'y.vasin@demis.ru');
@@ -42,7 +44,7 @@ if ($res->is_success() && $res->content_type() eq 'text/html')
     push @urlst, @matches;
   }
 
-push @urlst_done, 0;
+push @urlst_done, $strt;
 undef $req;
 undef $res;
 
@@ -79,10 +81,6 @@ sub parse_url
     # Берём следующий номер в списке
     my $seq=$last_p++;
 
-    # if(!($seq ~~ @urlst_done))
-    if ( !grep( /^$seq$/, @urlst_done ) )
-    {
-
       # Если список кончился, заканчиваем
       # if ($seq>=@urlst)
       if( $seq >= 0+@urlst)
@@ -94,49 +92,54 @@ sub parse_url
       my $turl = @urlst[$seq];
       $turl =~ s/^\s+|\s+$//g;
 
-      if( (!$turl eq '') and (index($turl, '#') < 0) )
+      # if( (!$turl eq '') and (index($turl, '#') < 0) )
+      if( !($turl eq '') and (index($turl, $strt) > 0) )
       {
         $turl =~ s/^\/+$//g;
         if(index($turl, ':') < 0)
         {
           $turl = $strt.'/'.$turl;
         }
-        # print STDOUT "trying ", $turl, "\n";
-
-      	$req=HTTP::Request->new(GET=>$turl);
-      	$req->method('GET');
-      	my $res = $spyder->request($req); # response
-      	# $_=$res->content;
-
-        if ($res->is_success() && $res->content_type() eq 'text/html')
+        if ( !grep( /^$turl$/, @urlst_done ) )
         {
-          # my @matches = $_ =~ /href\s*=\s*["']\S+["']/g;
-          my @matches = ( $res->content =~ /href\s*=\s*["'](\S+)["']/g );
-          # push @matches, [$1] while $res->content =~ /href\s*=\s*["'](\S+)["']/g;
-        	print STDOUT $seq, "satus - ", $res->status_line(), " $turl, кол-во: ", 0+@matches, "\n";
+	        # print STDOUT "trying ", $turl, "\n";
 
-          push @urlst, @matches;
+	      	$req=HTTP::Request->new(GET=>$turl);
+	      	$req->method('GET');
+	      	my $res = $spyder->request($req); # response
+	      	# $_=$res->content;
+
+	        if ($res->is_success() && $res->content_type() eq 'text/html')
+	        {
+	          # my @matches = $_ =~ /href\s*=\s*["']\S+["']/g;
+	          my @matches = ( $res->content =~ /href\s*=\s*["'](\S+)["']/g );
+	          # push @matches, [$1] while $res->content =~ /href\s*=\s*["'](\S+)["']/g;
+	        	print STDOUT $seq, "satus - ", $res->status_line(), " $turl, кол-во: ", 0+@matches, "\n";
+
+	          push @urlst, @matches;
+	        }
+
+	        push @urlst_done, $turl;
+
+	        # Записываем найденные ссылки в файл
+			select ($log); $|=1;
+			foreach my $link (@urlst)
+      {
+        if ( !grep( /^$link$/, $log ) and !($link =~ m/(#|\.jpg|\.png|\.gif|\.css|\.js|skype:|tel:)/))
+        {
+          print $log $link, "\n";
         }
+      }
 
-        push @urlst_done, $seq;
-
-        undef $req;
-        undef $res;
+	        undef $req;
+	        undef $res;
+    	}
         undef $turl;
       }
-    }
   }
 
 }
 
-# Записываем найденные ссылки в файл
-select (LOG); $|=1;
-
-foreach my $link (@urlst)
-{
-  print LOG $link, "\n";
-}
-
-close(LOG) or die "Cannot close file";
+close($log) or die "Cannot close file";
 
 __END__

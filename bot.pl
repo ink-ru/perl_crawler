@@ -15,7 +15,7 @@ my $last_p:shared=0;
 
 my $req;
 my @urlst;
-my $map='http://magizoo.ru/sitemap_000.xml';
+my $map='http://chain-hook.ru/sitemap_000.xml';
 
 # Лог файл для записи
 
